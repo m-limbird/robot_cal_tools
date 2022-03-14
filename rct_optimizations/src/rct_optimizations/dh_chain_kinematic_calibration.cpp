@@ -257,6 +257,38 @@ KinematicCalibrationResult optimize(const KinematicCalibrationProblem2D3D &param
     problem.AddResidualBlock(cost_block, nullptr, target_chain_dh_offsets.data());
   }
 
+  // Add maximum likelihood estimate to eliminate Y shifts
+  {
+    Eigen::ArrayXXd mean(t_cm_to_c);
+
+    Eigen::ArrayXXd stdev(Eigen::ArrayXXd::Constant(t_cm_to_c.rows(),
+                                                    t_cm_to_c.cols(),
+                                                    0.00001));
+
+    auto *fn = new MaximumLikelihood(mean, stdev);
+    auto *cost_block = new ceres::DynamicAutoDiffCostFunction<MaximumLikelihood>(fn);
+    cost_block->AddParameterBlock(t_cm_to_c.size());
+    cost_block->SetNumResiduals(t_cm_to_c.size());
+
+    problem.AddResidualBlock(cost_block, nullptr, t_cm_to_c.data());
+  }
+
+  {
+    Eigen::ArrayXXd mean(aa_cm_to_c);
+
+    Eigen::ArrayXXd stdev(Eigen::ArrayXXd::Constant(aa_cm_to_c.rows(),
+                                                    aa_cm_to_c.cols(),
+                                                    0.0005));
+
+    auto *fn = new MaximumLikelihood(mean, stdev);
+    auto *cost_block = new ceres::DynamicAutoDiffCostFunction<MaximumLikelihood>(fn);
+    cost_block->AddParameterBlock(aa_cm_to_c.size());
+    cost_block->SetNumResiduals(aa_cm_to_c.size());
+
+    problem.AddResidualBlock(cost_block, nullptr, aa_cm_to_c.data());
+  }
+
+
   // Print optimization parameter labels
   printOptimizationLabels(problem, param_names, param_labels, param_masks);
 
